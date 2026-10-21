@@ -19,6 +19,8 @@
     name: string;
     isAdmin: boolean;
     score: number | null;
+    riskScore: number | null;
+    prob3: number | null;
     rank: number | null;
   };
 
@@ -76,45 +78,45 @@
     rooms: 'student_group_demo_rooms'
   } as const;
 
-  const gradeDescriptions: Record<GradeKey, { judge: string; title: string; description: string }> = {
+    const gradeDescriptions: Record<GradeKey, { judge: string; title: string; description: string }> = {
     0: {
-      judge: '伝説の無双キャンパスライフ',
-      title: '学問を極めし絶対覇者',
-      description: '圧倒的な学習習慣と完璧な自己管理です。今のペースを守れば、成績の高みを維持できます。'
+      judge: 'ランク 0: スーパーエリートワークマン',
+      title: 'スーパーエリートワークマン',
+      description: '圧倒的な作業量と出席率。グループを牽引する絶対的エースです。'
     },
     1: {
-      judge: '安定した優秀層',
-      title: '文武両道の勝ち組',
-      description: '良いバランスで学業を進めています。少しの改善でさらに安定した成績を目指せます。'
+      judge: 'ランク 1: 地雷回避・安定グループワーク',
+      title: '地雷回避・安定グループワーク',
+      description: 'バランスよく作業を進めています。地雷をうまく回避できています。'
     },
     2: {
-      judge: '平和主義標準層',
-      title: '伸びしろ満載の中堅',
-      description: '取り組み方は良いですが、習慣の維持と継続が弱い部分です。小さな改善が大きな差になります。'
+      judge: 'ランク 2: 地雷踏みかけ・爆発寸前',
+      title: '地雷踏みかけ・爆発寸前',
+      description: '取り組み方は悪くないですが、モチベーションや進捗維持が危うい状態です。'
     },
     3: {
-      judge: '単位危険水域',
-      title: '改善の余地が大きい状態',
-      description: '学習習慣や課題量に改善余地があります。まずは継続しやすい目標を一つずつ立てていくと良いです。'
+      judge: 'ランク 3: 【地雷確定】グループ全員に謝礼金レベル',
+      title: '【地雷確定】グループ全員に謝礼金レベル',
+      description: '作業時間や課題量に深刻な課題があります。直ちに生活習慣を見直してください。'
     }
   };
 
   const diagnosisQuestions: DiagnosticQuestion[] = [
-    { id: 'StudyHours', label: '1週間の学習時間', type: 'slider', min: 0, max: 60, step: 1, value: 20 },
-    { id: 'Attendance', label: '授業出席率', type: 'slider', min: 0, max: 100, step: 1, value: 80 },
-    { id: 'AssignmentCompletion', label: '課題提出の完成度', type: 'slider', min: 0, max: 100, step: 1, value: 75 },
-    { id: 'Discussions', label: '授業や話し合いへの参加度', type: 'radio', value: 1, options: [{ value: 1, label: '積極的に参加している' }, { value: 0, label: 'あまり参加していない' }] },
-    { id: 'Motivation', label: '学習へのモチベーション', type: 'select', value: 2, options: [{ value: 2, label: '高い' }, { value: 1, label: '普通' }, { value: 0, label: '低い' }] },
-    { id: 'Resources', label: '教材・学習リソースの活用数', type: 'slider', min: 0, max: 5, step: 1, value: 2 },
-    { id: 'EduTech', label: '教育系アプリやツールの活用', type: 'radio', value: 1, options: [{ value: 1, label: '活用している' }, { value: 0, label: '使っていない' }] },
-    { id: 'Internet', label: '自宅の学習環境', type: 'radio', value: 1, options: [{ value: 1, label: '快適' }, { value: 0, label: '不安がある' }] },
+    { id: 'StudyHours', label: '1週間の作業時間 (時間)', type: 'slider', min: 0, max: 60, step: 1, value: 20 },
+    { id: 'Attendance', label: 'グループワークの出席率 (%)', type: 'slider', min: 0, max: 100, step: 1, value: 80 },
+    { id: 'AssignmentCompletion', label: '課題の完了度 (%)', type: 'slider', min: 0, max: 100, step: 1, value: 75 },
+    { id: 'Discussions', label: 'ディスカッションへの積極参加', type: 'radio', value: 1, options: [{ value: 1, label: '参加している' }, { value: 0, label: 'あまり参加していない' }] },
+    { id: 'Motivation', label: '作業へのモチベーション', type: 'select', value: 2, options: [{ value: 2, label: '2: 高い' }, { value: 1, label: '1: 普通' }, { value: 0, label: '0: 低い' }] },
+    { id: 'Resources', label: '活用している教材・リソース数', type: 'slider', min: 0, max: 5, step: 1, value: 2 },
+    { id: 'EduTech', label: 'EdTechツール（AI等）の活用', type: 'radio', value: 1, options: [{ value: 1, label: '活用している' }, { value: 0, label: '使っていない' }] },
+    { id: 'Internet', label: '自宅のネット環境', type: 'radio', value: 1, options: [{ value: 1, label: '快適' }, { value: 0, label: '不安あり' }] },
     { id: 'Gender', label: '性別', type: 'select', value: 0, options: [{ value: 0, label: '女性' }, { value: 1, label: '男性' }] },
     { id: 'Age', label: '年齢', type: 'number', min: 15, max: 30, value: 20 }
   ];
 
   const emptyRoomList: Room[] = [];
 
-  let screen: Screen = 'splash';
+  let screen: Screen = 'rooms';
   let authForm = { email: '', password: '', name: '' };
   let profileForm = { nickname: '', grade: '高校1年生' };
   let roomName = '';
@@ -201,20 +203,108 @@
     };
   };
 
+  let isGoogleReady = false;
+
+  const ensureGoogleInitialized = () => {
+    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+    if (!clientId || !window.google?.accounts?.id) return false;
+    try {
+      window.google.accounts.id.initialize({
+        client_id: clientId,
+        callback: handleGoogleCredentialResponse,
+        auto_select: false,
+        cancel_on_tap_outside: true
+      });
+      isGoogleReady = true;
+      return true;
+    } catch (e) {
+      console.warn('Google Auth Init error:', e);
+      return false;
+    }
+  };
+
+  const renderGoogleButton = (node: HTMLElement) => {
+    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+    if (!clientId) {
+      console.warn('VITE_GOOGLE_CLIENT_ID is not configured');
+      return;
+    }
+
+    const tryRender = () => {
+      if (!window.google?.accounts?.id) return false;
+      ensureGoogleInitialized();
+      try {
+        node.innerHTML = '';
+        window.google.accounts.id.renderButton(node, {
+          theme: 'outline',
+          size: 'large',
+          type: 'standard',
+          text: 'continue_with',
+          shape: 'pill',
+          logo_alignment: 'left',
+          width: 280
+        });
+        return true;
+      } catch (err) {
+        console.error('Failed to render Google button:', err);
+        return false;
+      }
+    };
+
+    if (!tryRender()) {
+      let attempts = 0;
+      const timer = setInterval(() => {
+        attempts += 1;
+        if (tryRender() || attempts > 20) {
+          clearInterval(timer);
+        }
+      }, 250);
+    }
+  };
+
   const signInWithGoogle = () => {
     const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
     if (!clientId) {
-      setToast('Google Client ID が未設定です。 .env に VITE_GOOGLE_CLIENT_ID を設定してください。');
+      setToast('Google Client ID が未設定です。.env に VITE_GOOGLE_CLIENT_ID を設定してください。');
       return;
     }
 
     if (!window.google?.accounts?.id) {
       loadGoogleIdentityScript();
-      setToast('Googleログインを準備しています...');
+      setToast('Google認証を読み込み中です。少々お待ちください...');
       return;
     }
 
-    window.google.accounts.id.prompt(() => undefined);
+    ensureGoogleInitialized();
+    try {
+      window.google.accounts.id.prompt((notification: any) => {
+        if (notification?.isNotDisplayed?.() || notification?.isSkippedMoment?.()) {
+          setToast('Googleボタンをクリックしてログインしてください。');
+        }
+      });
+    } catch {
+      setToast('Googleログインボタンをクリックしてください。');
+    }
+  };
+
+  const loginAsGuest = () => {
+    const guestUser: User = {
+      id: crypto.randomUUID(),
+      email: `guest_${Math.floor(Math.random() * 9000 + 1000)}@example.com`,
+      password: 'guest-login',
+      name: 'テストプレイヤー',
+      nickname: 'テストプレイヤー',
+      grade: '大学2年生',
+      createdAt: Date.now()
+    };
+    let users = getUsers();
+    users = [...users, guestUser];
+    saveUsers(users);
+    currentUser = guestUser;
+    persistSession(guestUser);
+    toProfileDefaults(guestUser);
+    setToast('ゲストとしてログインしました');
+    navigate('rooms');
   };
 
   const decodeGoogleJwt = (token: string) => {
@@ -255,7 +345,7 @@
         password: 'google-oauth',
         name: payload.name || payload.email.split('@')[0],
         nickname: payload.name || payload.email.split('@')[0],
-        grade: '高校1年生',
+        grade: '大学1年生',
         createdAt: Date.now()
       };
       users = [...users, user];
@@ -265,35 +355,17 @@
     currentUser = user;
     persistSession(user);
     toProfileDefaults(user);
-    setToast('Googleアカウントでログインしました');
+    setToast(`${user.name}さん、ようこそ！`);
     navigate(user.nickname && user.grade ? 'rooms' : 'profile');
   };
 
-  const initializeGoogleLogin = () => {
-    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
-    const button = document.getElementById('google-login-button');
-    if (!clientId || !button || !window.google?.accounts?.id) return;
-
-    window.google.accounts.id.initialize({
-      client_id: clientId,
-      callback: handleGoogleCredentialResponse,
-      auto_select: false,
-      cancel_on_tap_outside: false
-    });
-
-    window.google.accounts.id.renderButton(button, {
-      theme: 'outline',
-      size: 'large',
-      type: 'standard',
-      text: 'continue_with',
-      shape: 'pill',
-      logo_alignment: 'left'
-    });
-  };
-
   const loadGoogleIdentityScript = () => {
+    if (window.google?.accounts?.id) {
+      ensureGoogleInitialized();
+      return;
+    }
+
     if (document.getElementById('google-gsi-script')) {
-      setTimeout(() => initializeGoogleLogin(), 200);
       return;
     }
 
@@ -303,7 +375,7 @@
     script.async = true;
     script.defer = true;
     script.onload = () => {
-      setTimeout(() => initializeGoogleLogin(), 150);
+      ensureGoogleInitialized();
     };
     document.head.appendChild(script);
   };
@@ -523,7 +595,7 @@
     diagnosisValues[key] = Number(target.value);
   };
 
-  const currentQuestion = diagnosisQuestions[diagnosisIndex];
+  $: currentQuestion = diagnosisQuestions[diagnosisIndex];
 
   const nextQuestion = () => {
     if (diagnosisIndex < diagnosisQuestions.length - 1) {
@@ -537,6 +609,57 @@
     }
   };
 
+  const SONY_API_KEY = 'df4d195d-dfa9-4e10-b515-77e15096d492';
+  const SONY_API_URL = 'https://user-api.predictionone.sony.biz/v1/groups/qejw062trt0qwwav/classifiers/quipaioomqira6hd/inference';
+
+  const predictDirectlyFromSony = async (input: StudentInput): Promise<{ final_grade: number; probabilities: Probability }> => {
+    const csvContent = [
+      'StudyHours,Attendance,Resources,Motivation,Internet,Gender,Age,Discussions,AssignmentCompletion,EduTech',
+      `${input.StudyHours},${input.Attendance},${input.Resources},${input.Motivation},${input.Internet},${input.Gender},${input.Age},${input.Discussions},${input.AssignmentCompletion},${input.EduTech}`
+    ].join('\n') + '\n';
+
+    const encodedData = btoa(unescape(encodeURIComponent(csvContent)));
+    const response = await fetch(SONY_API_URL, {
+      method: 'POST',
+      headers: {
+        'x-api-key': SONY_API_KEY,
+        'content-type': 'application/json; charset=utf-8'
+      },
+      body: JSON.stringify({
+        inputs: [
+          { name: 'pr', type: 'csv', data: encodedData },
+          { name: 'ar', type: 'boolean', data: false },
+          { name: 'ad', type: 'boolean', data: true },
+          { name: 'nc', type: 'boolean', data: false }
+        ]
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`Sony API HTTP ${response.status}`);
+    }
+
+    const json = await response.json();
+    const output = (json.outputs || []).find((item: any) => item.name === 'prediction_valid.csv');
+    if (!output) {
+      throw new Error('prediction_valid.csv not found');
+    }
+
+    const decodedCsv = decodeURIComponent(escape(atob(output.data)));
+    const lines = decodedCsv.trim().split('\n');
+    const cols = lines[1].split(',');
+
+    return {
+      final_grade: parseInt(cols[1], 10),
+      probabilities: {
+        rank0: parseFloat(cols[2]) * 100,
+        rank1: parseFloat(cols[3]) * 100,
+        rank2: parseFloat(cols[4]) * 100,
+        rank3: parseFloat(cols[5]) * 100
+      }
+    };
+  };
+
   const submitDiagnosis = async () => {
     if (!currentUser || !currentRoom) return;
     diagnosisLoading = true;
@@ -544,19 +667,29 @@
     navigate('loading');
 
     try {
-      const response = await fetch('http://127.0.0.1:8000/predict', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(buildStudentInput())
-      });
+      let payload: { final_grade: number; probabilities: Probability };
+      const studentInput = buildStudentInput();
 
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
+      try {
+        const response = await fetch('http://127.0.0.1:8000/predict', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(studentInput)
+        });
+
+        if (response.ok) {
+          payload = await response.json();
+        } else {
+          payload = await predictDirectlyFromSony(studentInput);
+        }
+      } catch {
+        // バックエンドが未起動の場合は直接Sony Prediction One APIへ
+        payload = await predictDirectlyFromSony(studentInput);
       }
 
-      const payload = await response.json();
       const rankKey = Number(payload.final_grade) as GradeKey;
       const info = gradeDescriptions[rankKey];
+      const riskScore = payload.final_grade * 100 + (payload.probabilities?.rank3 ?? 0);
 
       diagnosisResult = {
         final_grade: Number(payload.final_grade),
@@ -571,7 +704,13 @@
         const updatedParticipants = room.participants.map((participant) => {
           if (!currentUser) return participant;
           if (participant.id !== currentUser.id) return participant;
-          return { ...participant, score: Number(payload.final_grade), rank: null };
+          return {
+            ...participant,
+            score: Number(payload.final_grade),
+            riskScore: riskScore,
+            prob3: payload.probabilities?.rank3 ?? 0,
+            rank: null
+          };
         });
 
         return { ...room, participants: updatedParticipants };
@@ -597,6 +736,11 @@
     navigate('diagnosis');
   };
 
+    const goHome = () => {
+    currentRoom = null;
+    navigate('rooms');
+  };
+
   const goBackToRoom = () => {
     currentRoom = currentRoom ?? rooms[0] ?? null;
     navigate('waiting');
@@ -614,31 +758,34 @@
 
   onMount(() => {
     isHydrated = true;
-    loadGoogleIdentityScript();
-    const sessionUser = getCurrentUser();
-    const storedRooms = getRooms();
-    rooms = storedRooms;
-
-    if (sessionUser) {
-      currentUser = sessionUser;
-      if (sessionUser.nickname && sessionUser.grade) {
-        navigate('rooms');
-      } else {
-        toProfileDefaults(sessionUser);
-        navigate('profile');
-      }
-      return;
+    let sessionUser = getCurrentUser();
+    if (!sessionUser) {
+      sessionUser = {
+        id: crypto.randomUUID(),
+        email: 'user@example.com',
+        password: 'default-session',
+        name: 'メンバー',
+        nickname: 'メンバー',
+        grade: '大学1年生',
+        createdAt: Date.now()
+      };
+      saveUsers([sessionUser]);
+      persistSession(sessionUser);
     }
-
-    setTimeout(() => {
-      navigate('auth');
-    }, 1200);
+    currentUser = sessionUser;
+    rooms = getRooms();
+    navigate('rooms');
   });
 
   $: progressRate = ((diagnosisIndex + 1) / diagnosisQuestions.length) * 100;
   $: ranking = currentRoom
     ? [...currentRoom.participants].sort((a, b) => (b.score ?? 0) - (a.score ?? 0))
     : [];
+  $: maxRiskPlayer = currentRoom
+    ? [...currentRoom.participants]
+        .filter((p) => p.riskScore !== null && p.riskScore !== undefined)
+        .sort((a, b) => (b.riskScore ?? 0) - (a.riskScore ?? 0))[0] ?? null
+    : null;
   $: mostConcerned = ranking.length > 0 ? ranking[ranking.length - 1] : null;
   $: if (currentUser && currentUser.nickname && currentUser.grade && screen === 'splash' && isHydrated) {
     // no-op: keep splash behavior simple
@@ -646,246 +793,156 @@
 </script>
 
 <svelte:head>
-  <title>Group Grade Studio</title>
+  <title>グループ診断</title>
 </svelte:head>
 
-{#if screen === 'splash'}
-  <div class="screen splash-screen">
-    <div class="splash-card">
-      <div class="logo-badge">AI</div>
-      <p class="eyebrow">STUDENT GROUP DIAGNOSTIC</p>
-      <h1>Grade Studio</h1>
-      <p class="tagline">友だちと一緒に、学習習慣を見える化しよう</p>
-      <div class="loader"><span></span></div>
-    </div>
-  </div>
-{:else if screen === 'auth'}
-  <div class="screen auth-screen">
+{#if screen === 'rooms'}
+  <div class="screen">
     <div class="phone-shell">
-      <div class="topbar-simple">
-        <div class="brand-inline"><span>AI</span>Grade Studio</div>
-      </div>
-      <div class="auth-card card">
-        <p class="eyebrow">WELCOME</p>
-        <h2>Googleでログイン</h2>
-
-        <div class="oauth-stack">
-          <button class="primary-button full" on:click={signInWithGoogle} type="button">Googleで続ける</button>
-          <div id="google-login-button"></div>
-        </div>
-
-        <p class="auth-hint">Googleアカウントを使って、すぐにグループ診断を始められます。</p>
-      </div>
-    </div>
-  </div>
-{:else if screen === 'profile'}
-  <div class="screen mobile-screen">
-    <div class="phone-shell small-gap">
-      <header class="mobile-header">
+      <header class="page-header">
         <div>
-          <p class="eyebrow">PROFILE</p>
-          <h2>基本情報を設定</h2>
+          <p class="eyebrow">HOME</p>
+          <h2>ホーム</h2>
         </div>
       </header>
 
-      <div class="card form-card">
-        <div class="field-stack">
+      <div class="content-scroll-area">
+        <div class="card form-card">
           <label>
-            <span>ニックネーム</span>
-            <input bind:value={profileForm.nickname} type="text" placeholder="例: しおり" />
+            <span>ルームを作成して開始</span>
+            <input bind:value={roomName} placeholder="ルーム名を入力（例: 班A）" type="text" />
           </label>
+          <button class="primary-button full" on:click={createRoom} type="button">ルームを作成</button>
+        </div>
 
+        <div class="card form-card compact-card">
           <label>
-            <span>学年</span>
-            <select bind:value={profileForm.grade}>
-              <option value="高校1年生">高校1年生</option>
-              <option value="高校2年生">高校2年生</option>
-              <option value="高校3年生">高校3年生</option>
-              <option value="大学1年生">大学1年生</option>
-              <option value="大学2年生">大学2年生</option>
-              <option value="大学3年生">大学3年生</option>
-              <option value="大学4年生">大学4年生</option>
-            </select>
+            <span>招待コードで参加</span>
+            <div class="inline-input-group">
+              <input bind:value={roomCodeInput} maxlength="6" placeholder="コード (6桁)" type="text" />
+              <button class="secondary-button" on:click={joinRoom} type="button">参加</button>
+            </div>
           </label>
         </div>
 
-        {#if profileError}
-          <p class="error-text">{profileError}</p>
+        {#if roomError}
+          <p class="error-text">{roomError}</p>
         {/if}
+
+        <!-- 偽サイト風の怪しい広告バナー（絵文字なし・クリーン） -->
+        <a 
+          href="https://youtu.be/-ZGlaAxB7nI?si=PRc-BstyAs7hdJ6F" 
+          target="_blank" 
+          rel="noopener noreferrer" 
+          class="fake-ad-card"
+        >
+          <div class="ad-top-bar">
+            <span class="ad-badge">[PR] お知らせ</span>
+            <span class="ad-close">✕</span>
+          </div>
+          <div class="ad-content">
+            <strong>【警告】端末から異常な動作が検出されました</strong>
+            <p>システムの安定性を保つため、今すぐ修復プログラムを実行してください。</p>
+            <div class="ad-action-btn">今すぐ修復プログラムを実行（推奨） →</div>
+          </div>
+        </a>
       </div>
-
-      <div class="bottom-bar">
-        <button class="primary-button full" on:click={saveProfile} type="button">プロフィールを保存</button>
-      </div>
-    </div>
-  </div>
-{:else if screen === 'rooms'}
-  <div class="screen mobile-screen">
-    <div class="phone-shell small-gap">
-      <header class="mobile-header room-header">
-        <div>
-          <p class="eyebrow">ROOMS</p>
-          <h2>ルーム一覧</h2>
-        </div>
-        <button class="menu-button" on:click={logout} type="button">ログアウト</button>
-      </header>
-
-      <div class="card create-room-card">
-        <label>
-          <span>新しいルーム名</span>
-          <input bind:value={roomName} placeholder="例: しゅわしゅわ勉強会" type="text" />
-        </label>
-        <button class="primary-button full" on:click={createRoom} type="button">ルームを作成</button>
-      </div>
-
-      <div class="card join-card">
-        <label>
-          <span>招待コードで参加</span>
-          <input bind:value={roomCodeInput} maxlength="6" placeholder="ABC123" type="text" />
-        </label>
-        <button class="secondary-button full" on:click={joinRoom} type="button">コードで参加</button>
-      </div>
-
-      {#if roomError}
-        <p class="error-text">{roomError}</p>
-      {/if}
-
-      <section class="list-section">
-        <div class="section-head">
-          <h3>参加中のルーム</h3>
-        </div>
-
-        {#if rooms.length === 0}
-          <div class="empty-card">まだルームがありません。新しく作成しましょう。</div>
-        {:else}
-          {#each rooms as room}
-            <button class="room-card" on:click={() => enterRoom(room)} type="button">
-              <div class="room-card-top">
-                <div>
-                  <strong>{room.name}</strong>
-                  <span>{room.code}</span>
-                </div>
-                <span class="pill">{room.participants.length}人</span>
-              </div>
-              <div class="room-meta">
-                <span>{room.status === 'waiting' ? '待機中' : '診断完了'}</span>
-                <span>{room.participants[0]?.name ?? '管理者'}</span>
-              </div>
-            </button>
-          {/each}
-        {/if}
-      </section>
     </div>
   </div>
 {:else if screen === 'waiting'}
-  <div class="screen mobile-screen">
-    <div class="phone-shell small-gap">
-      <header class="mobile-header room-header">
+  <div class="screen">
+    <div class="phone-shell">
+      <header class="page-header">
         <div>
-          <p class="eyebrow">WAITING ROOM</p>
-          <h2>{currentRoom?.name ?? 'ルーム'}</h2>
+          <p class="eyebrow">ROOM</p>
+          <h2>{currentRoom?.name ?? '待機室'}</h2>
         </div>
-        <button class="menu-button" on:click={leaveRoom} type="button">退出</button>
+        <button class="ghost-button small-btn" on:click={leaveRoom} type="button">退出</button>
       </header>
 
-      <div class="card room-info-card">
-        <div class="info-row">
-          <span>コード</span>
-          <strong>{currentRoom?.code ?? '---'}</strong>
-        </div>
-        <div class="info-row">
-          <span>参加人数</span>
-          <strong>{currentRoom?.participants.length ?? 0}人</strong>
-        </div>
-      </div>
-
-      <div class="participant-list card">
-        <div class="section-head">
-          <h3>参加者</h3>
-        </div>
-        {#each currentRoom?.participants ?? [] as participant}
-          <div class="participant-item">
-            <div class="avatar">{participant.name.slice(0, 1)}</div>
-            <div class="participant-meta">
-              <strong>{participant.name}</strong>
-              <span>{participant.isAdmin ? '管理者' : '参加者'}</span>
-            </div>
-            {#if participant.isAdmin}
-              <span class="badge admin-badge">Admin</span>
-            {/if}
+      <div class="content-scroll-area">
+        <div class="card info-card">
+          <div class="info-row">
+            <span>招待コード</span>
+            <strong class="code-badge">{currentRoom?.code ?? ''}</strong>
           </div>
-        {/each}
+          <p class="hint-text">このコードを他のメンバーに共有してください。</p>
+        </div>
+
+        <div class="card">
+          <div class="section-title">参加者 ({currentRoom?.participants.length ?? 0}人)</div>
+          <div class="participant-list">
+            {#each currentRoom?.participants ?? [] as p}
+              <div class="participant-item">
+                <span class="participant-name">{p.name}</span>
+                {#if p.isAdmin}
+                  <span class="admin-pill">ホスト</span>
+                {/if}
+              </div>
+            {/each}
+          </div>
+        </div>
       </div>
 
       <div class="bottom-bar">
-        <button
-          class="primary-button full"
-          on:click={startDiagnosis}
-          type="button"
-          disabled={!isAdmin()}
-          class:disabled-button={!isAdmin()}
-        >
-          {isAdmin() ? '診断を開始' : '管理者が開始します'}
-        </button>
+        <button class="primary-button full" on:click={startDiagnosis} type="button">診断を開始</button>
       </div>
     </div>
   </div>
 {:else if screen === 'diagnosis'}
-  <div class="screen mobile-screen">
-    <div class="phone-shell small-gap">
-      <header class="mobile-header">
+  <div class="screen">
+    <div class="phone-shell">
+      <header class="page-header">
         <div>
           <p class="eyebrow">DIAGNOSIS</p>
-          <h2>個人診断</h2>
+          <h2>設問 {diagnosisIndex + 1} / {diagnosisQuestions.length}</h2>
         </div>
       </header>
 
-      <div class="progress-card card">
-        <div class="progress-top">
-          <span>{diagnosisIndex + 1}/{diagnosisQuestions.length}</span>
-          <span>{Math.round(progressRate)}%</span>
-        </div>
-        <div class="progress-bar">
-          <div style={`width: ${progressRate}%`}></div>
-        </div>
+      <div class="progress-bar-container">
+        <div class="progress-fill" style={`width: ${progressRate}%`}></div>
       </div>
 
-      <div class="card question-card">
-        <h3>{currentQuestion.label}</h3>
+      <div class="content-scroll-area center-content">
+        <div class="card question-card">
+          <h3>{currentQuestion.label}</h3>
 
-        {#if currentQuestion.type === 'slider'}
-          <input
-            type="range"
-            min={currentQuestion.min}
-            max={currentQuestion.max}
-            step={currentQuestion.step}
-            bind:value={diagnosisValues[currentQuestion.id]}
-          />
-          <div class="range-value">{diagnosisValues[currentQuestion.id]} / {currentQuestion.max}</div>
-        {:else if currentQuestion.type === 'radio'}
-          <div class="choice-list">
-            {#each currentQuestion.options ?? [] as option}
-              <label class="choice-item">
-                <input
-                  type="radio"
-                  name={currentQuestion.id}
-                  value={option.value}
-                  checked={String(diagnosisValues[currentQuestion.id]) === String(option.value)}
-                  on:change={(event) => handleOptionChange(event, currentQuestion.id)}
-                />
-                <span>{option.label}</span>
-              </label>
-            {/each}
-          </div>
-        {:else if currentQuestion.type === 'select'}
-          <select bind:value={diagnosisValues[currentQuestion.id]}>
-            {#each currentQuestion.options ?? [] as option}
-              <option value={option.value}>{option.label}</option>
-            {/each}
-          </select>
-        {:else}
-          <input type="number" min={currentQuestion.min ?? 0} max={currentQuestion.max ?? 100} bind:value={diagnosisValues[currentQuestion.id]} />
-        {/if}
+          {#if currentQuestion.type === 'slider'}
+            <div class="slider-wrapper">
+              <input
+                type="range"
+                min={currentQuestion.min}
+                max={currentQuestion.max}
+                step={currentQuestion.step}
+                bind:value={diagnosisValues[currentQuestion.id]}
+              />
+              <div class="range-display">{diagnosisValues[currentQuestion.id]} / {currentQuestion.max}</div>
+            </div>
+          {:else if currentQuestion.type === 'radio'}
+            <div class="radio-options">
+              {#each currentQuestion.options ?? [] as option}
+                <label class="radio-card">
+                  <input
+                    type="radio"
+                    name={currentQuestion.id}
+                    value={option.value}
+                    checked={String(diagnosisValues[currentQuestion.id]) === String(option.value)}
+                    on:change={(event) => handleOptionChange(event, currentQuestion.id)}
+                  />
+                  <span>{option.label}</span>
+                </label>
+              {/each}
+            </div>
+          {:else if currentQuestion.type === 'select'}
+            <select bind:value={diagnosisValues[currentQuestion.id]}>
+              {#each currentQuestion.options ?? [] as option}
+                <option value={option.value}>{option.label}</option>
+              {/each}
+            </select>
+          {:else}
+            <input type="number" min={currentQuestion.min ?? 0} max={currentQuestion.max ?? 100} bind:value={diagnosisValues[currentQuestion.id]} />
+          {/if}
+        </div>
       </div>
 
       <div class="bottom-nav">
@@ -899,75 +956,72 @@
     </div>
   </div>
 {:else if screen === 'loading'}
-  <div class="screen loading-screen">
-    <div class="loading-card card">
+  <div class="screen">
+    <div class="phone-shell center-shell">
       <div class="spinner"></div>
       <h2>回答を分析しています</h2>
-      <p>診断結果を準備しています。しばらくお待ちください。</p>
+      <p class="hint-text">診断結果を生成中です。しばらくお待ちください。</p>
       {#if diagnosisError}
         <p class="error-text">{diagnosisError}</p>
       {/if}
     </div>
   </div>
 {:else if screen === 'results'}
-  <div class="screen mobile-screen">
-    <div class="phone-shell small-gap">
-      <header class="mobile-header">
+  <div class="screen">
+    <div class="phone-shell">
+      <header class="page-header compact-header">
         <div>
           <p class="eyebrow">RESULT</p>
           <h2>診断結果</h2>
         </div>
       </header>
 
-      {#if diagnosisResult}
-        <div class="card result-hero">
-          <div class="result-badge">スコア {diagnosisResult.final_grade}</div>
-          <h3>{diagnosisResult.title}</h3>
-          <p>{getGradeJudge(Number(diagnosisResult.final_grade))}</p>
-          <small>{diagnosisResult.description}</small>
+      <div class="content-scroll-area compact-scroll">
+        {#if diagnosisResult}
+          <div class="card result-hero">
+            <span class="score-badge">ランク {diagnosisResult.final_grade}</span>
+            <h3>{diagnosisResult.title}</h3>
+            <p class="result-judge">{getGradeJudge(Number(diagnosisResult.final_grade))}</p>
+            <p class="result-desc">{diagnosisResult.description}</p>
+          </div>
+
+          <div class="probability-grid">
+            {#each probabilityOrder as item}
+              <div class="prob-card">
+                <span>{item.label}</span>
+                <strong>{getProbabilityValue(item.key, diagnosisResult).toFixed(1)}%</strong>
+              </div>
+            {/each}
+          </div>
+        {/if}
+
+        <div class="card compact-ranking">
+          <div class="section-title">全体ランキング</div>
+          {#if ranking.length > 0}
+            <div class="ranking-list">
+              {#each ranking as entry, index}
+                <div class="ranking-row">
+                  <span class="rank-num">{index + 1}位</span>
+                  <strong class="rank-name">{entry.name}</strong>
+                  <span class="rank-score">{entry.score ?? 0} pt</span>
+                </div>
+              {/each}
+            </div>
+          {/if}
         </div>
 
-        <div class="probability-grid">
-          {#each probabilityOrder as item}
-            <div class="prob-card">
-              <span>{item.label}</span>
-              <strong>{getProbabilityValue(item.key, diagnosisResult).toFixed(1)}%</strong>
-            </div>
-          {/each}
-        </div>
-      {/if}
-
-      <div class="card ranking-card">
-        <div class="section-head">
-          <h3>全体ランキング</h3>
-        </div>
-        {#if ranking.length > 0}
-          {#each ranking as entry, index}
-            <div class="ranking-row">
-              <div class="rank-mark">#{index + 1}</div>
-              <div class="ranking-user">
-                <strong>{entry.name}</strong>
-                <span>{entry.score ?? 0} pt</span>
-              </div>
-              <div class="mini-progress">
-                <div style={`width: ${((entry.score ?? 0) / 3) * 100}%`}></div>
-              </div>
-            </div>
-          {/each}
+        {#if maxRiskPlayer && (maxRiskPlayer.riskScore ?? 0) > 0}
+          <div class="card landmine-card">
+            <div class="landmine-badge">地雷認定</div>
+            <strong class="landmine-name">『{maxRiskPlayer.name}』</strong>
+            <p class="landmine-desc">今回のメンバーの中で最も地雷リスクが高いメンバーとして判定されました。速やかに生活習慣を見直してください。</p>
+          </div>
         {/if}
       </div>
 
-      {#if mostConcerned}
-        <div class="card attention-card">
-          <p class="eyebrow">ATTENTION</p>
-          <h3>今回の注意が必要な人</h3>
-          <strong>{mostConcerned.name}</strong>
-          <p>成績の伸びしろが大きく、改善の余地が残っています。メンタルと習慣を整えると一気に安定します。</p>
-        </div>
-      {/if}
-
-      <div class="bottom-nav result-actions">
+      <div class="bottom-nav tri-actions">
         <button class="ghost-button" on:click={goBackToRoom} type="button">ルームへ戻る</button>
+        <button class="secondary-button" on:click={goHome} type="button">ホームへ移動</button>
         <button class="primary-button" on:click={resetForReDiagnosis} type="button">再診断</button>
       </div>
     </div>
@@ -978,13 +1032,17 @@
   <div class="toast">{toast}</div>
 {/if}
 
+
 <style>
   :global(html, body) {
     margin: 0;
-    min-height: 100%;
-    background: linear-gradient(180deg, #f4f8ff 0%, #edf3ff 100%);
-    font-family: 'Segoe UI', 'Hiragino Sans', 'Noto Sans JP', sans-serif;
-    color: #14233d;
+    padding: 0;
+    height: 100%;
+    overflow: hidden;
+    background: #f8fafc;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Hiragino Sans', 'Noto Sans JP', sans-serif;
+    color: #1e293b;
+    -webkit-font-smoothing: antialiased;
   }
 
   :global(*) {
@@ -997,585 +1055,583 @@
     font: inherit;
   }
 
+  /* 画面全体：画面高さいっぱいでスクロール不要 */
   .screen {
-    min-height: 100vh;
+    height: 100vh;
+    max-height: 100vh;
+    width: 100vw;
     display: flex;
-    align-items: center;
     justify-content: center;
-    padding: 18px;
-  }
-
-  .mobile-screen,
-  .auth-screen {
-    width: 100%;
+    align-items: center;
+    overflow: hidden;
+    padding: 12px;
+    background: #f8fafc;
   }
 
   .phone-shell {
-    width: min(100%, 460px);
+    width: 100%;
+    max-width: 440px;
+    height: 100%;
+    max-height: 100%;
     display: flex;
     flex-direction: column;
-    gap: 18px;
-  }
-
-  .small-gap {
-    gap: 12px;
-  }
-
-  .card {
-    background: rgba(255, 255, 255, 0.9);
-    border: 1px solid rgba(93, 120, 186, 0.14);
-    border-radius: 22px;
-    box-shadow: 0 18px 30px rgba(38, 62, 111, 0.08);
-    padding: 18px;
-  }
-
-  .splash-screen {
-    background: radial-gradient(circle at top, rgba(116, 159, 255, 0.3), transparent 30%), #eef4ff;
-  }
-
-  .splash-card {
-    background: rgba(255, 255, 255, 0.88);
-    border: 1px solid rgba(116, 159, 255, 0.18);
-    border-radius: 28px;
-    padding: 32px 24px;
-    width: min(100%, 360px);
-    text-align: center;
-    box-shadow: 0 24px 40px rgba(39, 88, 180, 0.12);
-  }
-
-  .logo-badge {
-    width: 72px;
-    height: 72px;
-    margin: 0 auto 18px;
-    border-radius: 22px;
-    display: grid;
-    place-items: center;
-    font-weight: 800;
-    color: white;
-    background: linear-gradient(135deg, #2d74ff, #6bb4ff);
-    box-shadow: 0 12px 26px rgba(45, 116, 255, 0.28);
-  }
-
-  .eyebrow {
-    margin: 0 0 8px;
-    color: #4e73d2;
-    font-size: 0.7rem;
-    font-weight: 700;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-  }
-
-  h1,
-  h2,
-  h3,
-  p {
-    margin: 0;
-  }
-
-  h1 {
-    font-size: clamp(2.2rem, 9vw, 3rem);
-    letter-spacing: -0.06em;
-  }
-
-  h2 {
-    font-size: 1.7rem;
-    letter-spacing: -0.04em;
-  }
-
-  .tagline {
-    margin-top: 12px;
-    color: #496692;
-    line-height: 1.6;
-  }
-
-  .loader {
-    width: 104px;
-    height: 8px;
-    background: rgba(98, 149, 255, 0.12);
-    border-radius: 999px;
-    margin: 26px auto 0;
+    justify-content: space-between;
     overflow: hidden;
-    position: relative;
+    gap: 8px;
   }
 
-  .loader span {
-    display: block;
-    width: 32%;
-    height: 100%;
-    border-radius: inherit;
-    background: linear-gradient(90deg, #2d74ff, #77beff);
-    animation: loading 1.3s ease-in-out infinite alternate;
+  .center-shell {
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    gap: 16px;
   }
 
-  @keyframes loading {
-    0% { transform: translateX(-10%); }
-    100% { transform: translateX(220%); }
-  }
-
-  .topbar-simple,
-  .mobile-header,
-  .room-header,
-  .section-head,
-  .progress-top,
-  .info-row,
-  .room-card-top,
-  .room-meta,
-  .participant-item,
-  .ranking-row,
-  .bottom-nav,
-  .bottom-bar,
-  .stack-actions {
+  .page-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 10px;
+    padding: 4px 0;
+    flex-shrink: 0;
   }
 
-  .brand-inline {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    font-weight: 700;
-    color: #1c3e7b;
+  .compact-header {
+    padding: 0;
   }
 
-  .brand-inline span {
-    width: 26px;
-    height: 26px;
-    border-radius: 8px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    background: linear-gradient(135deg, #2d74ff, #74baff);
-    color: white;
+  .eyebrow {
     font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    color: #64748b;
+    margin: 0;
   }
 
-  .auth-card,
-  .form-card,
-  .create-room-card,
-  .join-card,
-  .participant-list,
-  .progress-card,
-  .question-card,
-  .ranking-card,
-  .room-info-card,
-  .attention-card,
-  .result-hero {
-    display: flex;
-    flex-direction: column;
-    gap: 14px;
+  h2 {
+    font-size: 1.35rem;
+    font-weight: 700;
+    color: #0f172a;
+    margin: 0;
   }
 
-  .field-stack {
+  h3 {
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: #1e293b;
+    margin: 0 0 10px;
+  }
+
+  /* コンテンツ領域：スクロールバーを出さずに収める */
+  .content-scroll-area {
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 10px;
+    flex: 1;
+    overflow: hidden;
+    justify-content: flex-start;
+  }
+
+  .compact-scroll {
+    gap: 8px;
+  }
+
+  .center-content {
+    justify-content: center;
+  }
+
+  /* 白を基調としたすっきりしたカード */
+  .card {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 14px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  }
+
+  .form-card {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .compact-card {
+    padding: 10px 14px;
   }
 
   label {
     display: flex;
     flex-direction: column;
-    gap: 8px;
-    color: #1d3358;
+    gap: 4px;
+    font-size: 0.88rem;
     font-weight: 600;
-    font-size: 0.95rem;
+    color: #334155;
   }
 
-  input,
+  input[type="text"],
+  input[type="number"],
   select {
     width: 100%;
-    border: 1px solid rgba(115, 143, 193, 0.25);
-    border-radius: 14px;
-    background: #f8fbff;
-    min-height: 48px;
-    padding: 12px 14px;
-    color: #14233d;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    background: #ffffff;
+    height: 42px;
+    padding: 8px 12px;
+    color: #0f172a;
+    font-size: 0.95rem;
   }
 
   input:focus,
   select:focus {
-    outline: 2px solid rgba(75, 117, 222, 0.18);
-    border-color: rgba(76, 120, 223, 0.55);
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15);
   }
 
-  .oauth-stack,
-  .stack-actions,
-  .bottom-nav,
-  .bottom-bar {
+  .inline-input-group {
     display: flex;
-    flex-direction: column;
-    gap: 10px;
+    gap: 8px;
+    align-items: center;
   }
 
-  .auth-hint {
-    color: #5d759f;
-    font-size: 0.88rem;
-    line-height: 1.6;
-    text-align: center;
+  .inline-input-group input {
+    flex: 1;
   }
 
-  .divider {
-    display: flex;
+  /* ボタン */
+  .primary-button,
+  .secondary-button,
+  .ghost-button {
+    height: 42px;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 0.92rem;
+    cursor: pointer;
+    display: inline-flex;
     align-items: center;
     justify-content: center;
-    color: #6b7fa5;
-    font-size: 0.8rem;
-    margin: 4px 0;
-  }
-
-  .divider::before,
-  .divider::after {
-    content: '';
-    flex: 1;
-    height: 1px;
-    background: rgba(110, 132, 182, 0.18);
-  }
-
-  .divider span {
-    padding: 0 10px;
-  }
-
-  .primary-button,
-  .secondary-button,
-  .ghost-button,
-  .menu-button,
-  .text-button,
-  .room-card {
-    border: none;
-    border-radius: 14px;
-    min-height: 48px;
-    cursor: pointer;
-    transition: transform 0.2s ease, opacity 0.2s ease;
-  }
-
-  .primary-button,
-  .secondary-button,
-  .ghost-button,
-  .menu-button {
     padding: 0 16px;
-    font-weight: 700;
+    border: 1px solid transparent;
+    transition: background-color 0.15s, border-color 0.15s;
   }
 
   .primary-button {
-    background: linear-gradient(135deg, #2d74ff, #6fade8);
-    color: white;
-    box-shadow: 0 14px 24px rgba(45, 116, 255, 0.2);
+    background: #0f172a;
+    color: #ffffff;
+  }
+
+  .primary-button:hover:not(:disabled) {
+    background: #1e293b;
   }
 
   .secondary-button {
-    background: #edf4ff;
-    color: #234799;
-    border: 1px solid rgba(97, 129, 222, 0.16);
+    background: #f1f5f9;
+    color: #1e293b;
+    border-color: #cbd5e1;
   }
 
-  .ghost-button,
-  .menu-button,
-  .text-button {
+  .secondary-button:hover:not(:disabled) {
+    background: #e2e8f0;
+  }
+
+  .ghost-button {
     background: transparent;
-    color: #2a4e9d;
+    color: #475569;
+    border-color: #cbd5e1;
+  }
+
+  .ghost-button:hover:not(:disabled) {
+    background: #f1f5f9;
+    color: #0f172a;
+  }
+
+  .small-btn {
+    height: 32px;
+    padding: 0 10px;
+    font-size: 0.8rem;
   }
 
   .full {
     width: 100%;
   }
 
-  .error-text {
-    color: #d14343;
-    font-size: 0.85rem;
-    font-weight: 600;
-    line-height: 1.5;
-    margin: 0;
-  }
-
-  .list-section {
+  /* ナビゲーションバー */
+  .bottom-nav,
+  .bottom-bar {
     display: flex;
-    flex-direction: column;
-    gap: 12px;
-    margin-top: 4px;
+    gap: 8px;
+    padding: 4px 0 0;
+    flex-shrink: 0;
   }
 
-  .empty-card {
-    padding: 18px;
-    border-radius: 18px;
-    background: #f4f8ff;
-    color: #4c6899;
-    border: 1px dashed rgba(110, 133, 182, 0.26);
-  }
-
-  .room-card {
-    width: 100%;
-    text-align: left;
-    background: #f9fbff;
-    border: 1px solid rgba(101, 123, 184, 0.16);
-    padding: 14px 16px;
-    box-shadow: 0 8px 18px rgba(27, 44, 75, 0.02);
-  }
-
-  .room-card strong {
-    display: block;
-    color: #18315d;
-    font-size: 1.05rem;
-  }
-
-  .room-card span {
-    color: #56709a;
-    font-size: 0.82rem;
-  }
-
-  .pill,
-  .badge,
-  .result-badge {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    padding: 6px 8px;
-    border-radius: 999px;
-    font-size: 0.72rem;
-    font-weight: 700;
-  }
-
-  .pill {
-    background: rgba(59, 129, 255, 0.12);
-    color: #2354bf;
-  }
-
-  .info-row {
-    font-size: 0.95rem;
-    color: #425d8a;
-  }
-
-  .participant-list {
-    gap: 10px;
-  }
-
-  .participant-item {
-    background: #f6f9ff;
-    border: 1px solid rgba(109, 133, 184, 0.12);
-    border-radius: 14px;
-    padding: 10px 12px;
-    justify-content: flex-start;
-  }
-
-  .avatar {
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    display: grid;
-    place-items: center;
-    background: linear-gradient(135deg, #2d74ff, #77c4ff);
-    color: white;
-    font-weight: 700;
-  }
-
-  .participant-meta {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
+  .bottom-nav button {
     flex: 1;
   }
 
-  .participant-meta span {
-    color: #6b7fa5;
-    font-size: 0.76rem;
+  .tri-actions {
+    display: flex;
+    gap: 6px;
   }
 
-  .admin-badge {
-    background: rgba(76, 195, 143, 0.14);
-    color: #0a8d62;
+  .tri-actions button {
+    flex: 1;
+    height: 40px;
+    font-size: 0.82rem;
+    padding: 0 6px;
   }
 
-  .progress-card {
-    gap: 10px;
-  }
-
-  .progress-bar {
-    width: 100%;
-    height: 10px;
-    background: rgba(93, 126, 196, 0.1);
-    border-radius: 999px;
+  /* 偽サイト風の怪しい広告バナー（絵文字なし） */
+  .fake-ad-card {
+    display: block;
+    text-decoration: none;
+    border: 1px solid #f87171;
+    background: #fef2f2;
+    border-radius: 10px;
     overflow: hidden;
+    cursor: pointer;
+    margin-top: 4px;
+    transition: transform 0.1s ease;
   }
 
-  .progress-bar div,
-  .mini-progress div {
-    height: 100%;
-    border-radius: inherit;
-    background: linear-gradient(90deg, #2d74ff, #72cbff);
+  .fake-ad-card:hover {
+    background: #fee2e2;
   }
 
-  .question-card {
-    min-height: 220px;
-    justify-content: center;
-  }
-
-  .choice-list {
+  .ad-top-bar {
     display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
-
-  .choice-item {
-    display: flex;
+    justify-content: space-between;
     align-items: center;
-    gap: 10px;
-    border: 1px solid rgba(99, 127, 196, 0.16);
-    border-radius: 14px;
-    padding: 10px 12px;
-    background: #f7faff;
+    background: #fecaca;
+    padding: 2px 8px;
+    font-size: 0.65rem;
   }
 
-  .choice-item input {
-    width: 18px;
-    min-height: 18px;
-  }
-
-  .range-value {
-    text-align: center;
-    color: #375fa6;
+  .ad-badge {
+    color: #991b1b;
     font-weight: 700;
   }
 
-  .loading-screen {
-    background: linear-gradient(180deg, rgba(84, 136, 255, 0.1), rgba(240, 245, 255, 0.9));
+  .ad-close {
+    color: #7f1d1d;
+    font-weight: 700;
   }
 
-  .loading-card {
-    width: min(100%, 340px);
-    text-align: center;
-    padding: 30px 18px;
+  .ad-content {
+    padding: 8px 10px;
     display: flex;
     flex-direction: column;
-    align-items: center;
-    gap: 14px;
+    gap: 4px;
   }
 
+  .ad-content strong {
+    color: #b91c1c;
+    font-size: 0.82rem;
+    line-height: 1.3;
+  }
+
+  .ad-content p {
+    color: #7f1d1d;
+    font-size: 0.72rem;
+    line-height: 1.3;
+    margin: 0;
+  }
+
+  .ad-action-btn {
+    margin-top: 4px;
+    background: #dc2626;
+    color: #ffffff;
+    font-size: 0.74rem;
+    font-weight: 700;
+    text-align: center;
+    padding: 5px 8px;
+    border-radius: 6px;
+  }
+
+  /* 待機室 */
+  .info-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .code-badge {
+    background: #f1f5f9;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-family: monospace;
+    font-size: 1.1rem;
+    letter-spacing: 0.1em;
+    color: #0f172a;
+    border: 1px solid #cbd5e1;
+  }
+
+  .section-title {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #475569;
+    margin-bottom: 6px;
+  }
+
+  .participant-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .participant-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    padding: 6px 10px;
+    font-size: 0.85rem;
+  }
+
+  .admin-pill {
+    background: #e2e8f0;
+    color: #475569;
+    font-size: 0.7rem;
+    font-weight: 600;
+    padding: 2px 6px;
+    border-radius: 4px;
+  }
+
+  .hint-text {
+    font-size: 0.75rem;
+    color: #64748b;
+    margin: 4px 0 0;
+  }
+
+  /* 設問 */
+  .progress-bar-container {
+    height: 4px;
+    background: #e2e8f0;
+    border-radius: 2px;
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+
+  .progress-fill {
+    height: 100%;
+    background: #0f172a;
+    transition: width 0.2s ease;
+  }
+
+  .question-card {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 20px 16px;
+  }
+
+  .slider-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 8px;
+  }
+
+  input[type="range"] {
+    accent-color: #0f172a;
+    width: 100%;
+    height: 6px;
+    cursor: pointer;
+  }
+
+  .range-display {
+    text-align: center;
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: #0f172a;
+  }
+
+  .radio-options {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 6px;
+  }
+
+  .radio-card {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    padding: 10px 12px;
+    background: #ffffff;
+    cursor: pointer;
+    font-size: 0.9rem;
+  }
+
+  .radio-card:hover {
+    border-color: #0f172a;
+  }
+
+  .radio-card input {
+    accent-color: #0f172a;
+  }
+
+  /* ローディング */
   .spinner {
-    width: 58px;
-    height: 58px;
+    width: 40px;
+    height: 40px;
+    border: 3px solid #e2e8f0;
+    border-top-color: #0f172a;
     border-radius: 50%;
-    border: 5px solid rgba(96, 136, 222, 0.18);
-    border-top-color: #2d74ff;
-    animation: spin 1s linear infinite;
+    animation: spin 0.8s linear infinite;
   }
 
   @keyframes spin {
     to { transform: rotate(360deg); }
   }
 
+  /* 結果画面（コンパクト） */
   .result-hero {
-    background: linear-gradient(180deg, #eff6ff, #f8fbff);
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 10px 12px;
+    border-left: 4px solid #0f172a;
   }
 
-  .result-badge {
+  .score-badge {
+    display: inline-block;
     width: fit-content;
-    background: rgba(45, 116, 255, 0.12);
-    color: #1f58ce;
+    background: #0f172a;
+    color: #ffffff;
+    font-size: 0.7rem;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 4px;
   }
 
-  .result-hero h3 {
-    font-size: 1.5rem;
+  .result-judge {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: #0f172a;
+    margin: 0;
   }
 
-  .result-hero small {
-    color: #56709a;
-    line-height: 1.6;
+  .result-desc {
+    font-size: 0.78rem;
+    color: #475569;
+    line-height: 1.4;
+    margin: 0;
   }
 
   .probability-grid {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 10px;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 6px;
   }
 
   .prob-card {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    padding: 12px;
-    border-radius: 14px;
-    background: #f6f9ff;
-    border: 1px solid rgba(94, 123, 186, 0.12);
-  }
-
-  .prob-card span {
-    color: #4f6c9d;
-    font-size: 0.8rem;
-  }
-
-  .prob-card strong {
-    font-size: 1.15rem;
-  }
-
-  .ranking-row {
-    display: grid;
-    grid-template-columns: 52px 1fr 90px;
-    gap: 10px;
-    align-items: center;
-    background: #f7faff;
-    border: 1px solid rgba(96, 129, 197, 0.14);
-    border-radius: 12px;
-    padding: 10px 12px;
-  }
-
-  .rank-mark {
-    width: 42px;
-    height: 42px;
-    border-radius: 12px;
-    display: grid;
-    place-items: center;
-    background: rgba(45, 116, 255, 0.08);
-    color: #1a53b8;
-    font-weight: 800;
-  }
-
-  .ranking-user {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 6px;
+    text-align: center;
     display: flex;
     flex-direction: column;
     gap: 2px;
   }
 
-  .ranking-user span {
-    color: #6280b0;
+  .prob-card span {
+    font-size: 0.68rem;
+    color: #64748b;
+  }
+
+  .prob-card strong {
+    font-size: 0.92rem;
+    color: #0f172a;
+  }
+
+  .compact-ranking {
+    padding: 8px 12px;
+  }
+
+  .ranking-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .ranking-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
     font-size: 0.8rem;
+    padding: 3px 0;
+    border-bottom: 1px solid #f1f5f9;
   }
 
-  .mini-progress {
-    height: 9px;
-    border-radius: 999px;
-    background: rgba(93, 126, 196, 0.12);
-    overflow: hidden;
+  .rank-num {
+    color: #64748b;
+    font-weight: 600;
+    width: 32px;
   }
 
-  .attention-card strong {
-    font-size: 1.2rem;
+  .rank-name {
+    flex: 1;
+    color: #0f172a;
   }
 
-  .disabled-button {
-    opacity: 0.5;
-    cursor: not-allowed;
-    box-shadow: none;
+  .rank-score {
+    color: #475569;
+    font-weight: 600;
+  }
+
+  /* 地雷認定カード（白基調・シンプル赤枠） */
+  .landmine-card {
+    border: 1.5px solid #dc2626;
+    background: #fff5f5;
+    padding: 8px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .landmine-badge {
+    font-size: 0.68rem;
+    font-weight: 800;
+    color: #dc2626;
+    letter-spacing: 0.05em;
+  }
+
+  .landmine-name {
+    font-size: 1.05rem;
+    color: #991b1b;
+  }
+
+  .landmine-desc {
+    font-size: 0.72rem;
+    color: #7f1d1d;
+    line-height: 1.35;
+    margin: 0;
+  }
+
+  .error-text {
+    color: #b91c1c;
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-size: 0.78rem;
+    margin: 0;
   }
 
   .toast {
     position: fixed;
-    right: 18px;
-    bottom: 18px;
-    background: rgba(22, 33, 55, 0.92);
-    color: white;
-    border-radius: 12px;
-    padding: 10px 14px;
-    font-size: 0.84rem;
-    box-shadow: 0 16px 28px rgba(16, 23, 42, 0.2);
-  }
-
-  @media (min-width: 768px) {
-    .phone-shell {
-      width: min(100%, 520px);
-    }
-
-    .screen {
-      padding: 28px;
-    }
+    right: 14px;
+    bottom: 14px;
+    background: #0f172a;
+    color: #ffffff;
+    border-radius: 6px;
+    padding: 8px 12px;
+    font-size: 0.78rem;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   }
 </style>
+

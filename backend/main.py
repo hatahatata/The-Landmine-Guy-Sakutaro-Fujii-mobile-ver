@@ -7,8 +7,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-API_KEY = "4273d517-cdc4-48ce-9544-954103110bd6"
-API_URL = "https://user-api.predictionone.sony.biz/v1/groups/i5bm94my1c8f99w2/classifiers/1v7ew1izwq4xso6u/inference"
+API_KEY = "df4d195d-dfa9-4e10-b515-77e15096d492"
+API_URL = "https://user-api.predictionone.sony.biz/v1/groups/qejw062trt0qwwav/classifiers/quipaioomqira6hd/inference"
 
 app = FastAPI(title="Student Grade Diagnosis API")
 
