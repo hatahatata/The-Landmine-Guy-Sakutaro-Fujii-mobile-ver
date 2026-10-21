@@ -758,23 +758,15 @@
 
   onMount(() => {
     isHydrated = true;
-    let sessionUser = getCurrentUser();
-    if (!sessionUser) {
-      sessionUser = {
-        id: crypto.randomUUID(),
-        email: 'user@example.com',
-        password: 'default-session',
-        name: 'メンバー',
-        nickname: 'メンバー',
-        grade: '大学1年生',
-        createdAt: Date.now()
-      };
-      saveUsers([sessionUser]);
-      persistSession(sessionUser);
+    const sessionUser = getCurrentUser();
+    if (sessionUser) {
+      currentUser = sessionUser;
+      rooms = getRooms();
+      navigate('rooms');
+    } else {
+      // セッションなし → Google ログイン画面へ
+      navigate('auth');
     }
-    currentUser = sessionUser;
-    rooms = getRooms();
-    navigate('rooms');
   });
 
   $: progressRate = ((diagnosisIndex + 1) / diagnosisQuestions.length) * 100;
@@ -796,7 +788,26 @@
   <title>グループ診断</title>
 </svelte:head>
 
-{#if screen === 'rooms'}
+{#if screen === 'auth'}
+  <div class="screen">
+    <div class="phone-shell">
+      <header class="page-header">
+        <div>
+          <p class="eyebrow">LOGIN</p>
+          <h2>ログイン</h2>
+        </div>
+      </header>
+      <div class="content-scroll-area">
+        <div class="card" style="margin-top:2rem; text-align:center;">
+          <p style="margin-bottom:1.5rem; color:#555;">Googleアカウントでサインインしてください</p>
+          <div use:renderGoogleButton style="display:flex; justify-content:center;"></div>
+          <hr style="margin: 1.5rem 0; border:none; border-top:1px solid #e0e0e0;" />
+          <button class="secondary-button full" on:click={loginAsGuest} type="button">ゲストとして続ける</button>
+        </div>
+      </div>
+    </div>
+  </div>
+{:else if screen === 'rooms'}
   <div class="screen">
     <div class="phone-shell">
       <header class="page-header">
@@ -804,6 +815,7 @@
           <p class="eyebrow">HOME</p>
           <h2>ホーム</h2>
         </div>
+        <button class="ghost-button small-btn" on:click={logout} type="button">ログアウト</button>
       </header>
 
       <div class="content-scroll-area">
