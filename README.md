@@ -42,7 +42,7 @@ python -m pip install -r requirements.txt
 ### 3. バックエンドを起動
 
 ```bash
-python -m uvicorn backend.main:app --host 127.0.0.1 --port 8000 --reload
+python -m uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
 ### 4. フロントエンドを起動
@@ -52,6 +52,8 @@ npm run dev
 ```
 
 ブラウザで `http://127.0.0.1:5173` にアクセスします。
+
+スマートフォンからアクセスする場合は、PC と同じ Wi-Fi に接続し、PC の IP アドレスを使って `http://<PCのIPアドレス>:5173` を開きます。ルーム API は既定で、開いているページと同じホストのポート `8000` に接続します。API が別のホストにある場合は、フロントエンドの `.env` に `VITE_API_BASE_URL=http://<APIのホスト>:8000` を設定してください。
 
 ## API 連携について
 

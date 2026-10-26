@@ -79,6 +79,8 @@
     currentRoomId: 'student_group_demo_current_room_id'
   } as const;
 
+  const ROOM_API_BASE_URL = import.meta.env.VITE_API_BASE_URL || `${window.location.protocol}//${window.location.hostname}:8000`;
+
     const gradeDescriptions: Record<GradeKey, { judge: string; title: string; description: string }> = {
     0: {
       judge: 'ランク 0: スーパーエリートワークマン',
@@ -471,7 +473,7 @@
     navigate('rooms');
   };
 
-  const createRoom = () => {
+  const createRoom = async () => {
     roomError = '';
 
     if (!roomName.trim()) {
@@ -491,16 +493,29 @@
       participants: [{ id: currentUser.id, name: currentUser.nickname || currentUser.name, isAdmin: true, score: null, rank: null }]
     };
 
-    const updatedRooms = [newRoom, ...getRooms()];
-    saveRooms(updatedRooms);
-    rooms = updatedRooms;
-    currentRoom = newRoom;
-    localStorage.setItem(STORAGE_KEYS.currentRoomId, newRoom.id);
-    roomName = '';
-    navigate('waiting');
+    try {
+      const response = await fetch(`${ROOM_API_BASE_URL}/rooms`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newRoom)
+      });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+      const createdRoom = await response.json() as Room;
+      const updatedRooms = [createdRoom, ...getRooms().filter((room) => room.id !== createdRoom.id)];
+      saveRooms(updatedRooms);
+      rooms = updatedRooms;
+      currentRoom = createdRoom;
+      localStorage.setItem(STORAGE_KEYS.currentRoomId, createdRoom.id);
+      roomName = '';
+      navigate('waiting');
+    } catch (error) {
+      roomError = 'ルームサーバーに接続できません。サーバーの起動状態を確認してください。';
+      console.error(error);
+    }
   };
 
-  const joinRoom = () => {
+  const joinRoom = async () => {
     roomError = '';
     const code = roomCodeInput.trim().toUpperCase();
     if (!code) {
@@ -511,30 +526,34 @@
     const user = currentUser;
     if (!user) return;
 
-    const room = getRooms().find((entry) => entry.code === code);
-    if (!room) {
-      roomError = 'そのコードは存在しません。';
-      return;
-    }
+    try {
+      const lookupResponse = await fetch(`${ROOM_API_BASE_URL}/rooms/by-code/${encodeURIComponent(code)}`);
+      if (lookupResponse.status === 404) {
+        roomError = 'そのコードは存在しません。';
+        return;
+      }
+      if (!lookupResponse.ok) throw new Error(`HTTP ${lookupResponse.status}`);
 
-    const alreadyJoined = room.participants.some((p) => p.id === user.id);
-    if (!alreadyJoined) {
-      room.participants.push({
-        id: user.id,
-        name: user.nickname || user.name,
-        isAdmin: false,
-        score: null,
-        rank: null
+      const foundRoom = await lookupResponse.json() as Room;
+      const joinResponse = await fetch(`${ROOM_API_BASE_URL}/rooms/${encodeURIComponent(foundRoom.id)}/join`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: user.id, name: user.nickname || user.name })
       });
-      const updatedRooms = getRooms().map((entry) => (entry.id === room.id ? room : entry));
+      if (!joinResponse.ok) throw new Error(`HTTP ${joinResponse.status}`);
+
+      const room = await joinResponse.json() as Room;
+      const updatedRooms = [room, ...getRooms().filter((entry) => entry.id !== room.id)];
       saveRooms(updatedRooms);
       rooms = updatedRooms;
+      currentRoom = room;
+      localStorage.setItem(STORAGE_KEYS.currentRoomId, room.id);
+      roomCodeInput = '';
+      navigate('waiting');
+    } catch (error) {
+      roomError = 'ルームサーバーに接続できません。サーバーの起動状態を確認してください。';
+      console.error(error);
     }
-
-    currentRoom = room;
-    localStorage.setItem(STORAGE_KEYS.currentRoomId, room.id);
-    roomCodeInput = '';
-    navigate('waiting');
   };
 
   const enterRoom = (room: Room) => {
