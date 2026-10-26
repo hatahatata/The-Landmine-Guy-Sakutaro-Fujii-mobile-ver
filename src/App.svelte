@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
 
-  type Screen = 'splash' | 'auth' | 'profile' | 'rooms' | 'waiting' | 'diagnosis' | 'loading' | 'results';
+  type Screen = 'splash' | 'auth' | 'profile' | 'rooms' | 'waiting' | 'diagnosis' | 'loading' | 'waiting-results' | 'results';
   type GradeKey = 0 | 1 | 2 | 3;
 
   type User = {
@@ -31,7 +31,7 @@
     ownerId: string;
     createdAt: number;
     participants: Participant[];
-    status: 'waiting' | 'completed';
+    status: 'waiting' | 'diagnosis' | 'completed';
   };
 
   type DiagnosticQuestion = {
@@ -563,12 +563,34 @@
 
   const isAdmin = () => currentUser && currentRoom ? currentRoom.ownerId === currentUser.id : false;
 
-  const startDiagnosis = () => {
-    if (!currentRoom) return;
+  const beginDiagnosis = () => {
     diagnosisIndex = 0;
     diagnosisResult = null;
+    diagnosisError = '';
     diagnosisValues = Object.fromEntries(diagnosisQuestions.map((question) => [question.id, question.value]));
     navigate('diagnosis');
+  };
+
+  const startDiagnosis = () => {
+    if (!currentRoom) return;
+    const updatedRooms = getRooms().map((room) => {
+      if (room.id !== currentRoom?.id) return room;
+      return {
+        ...room,
+        status: 'diagnosis' as const,
+        participants: room.participants.map((participant) => ({
+          ...participant,
+          score: null,
+          riskScore: null,
+          prob3: null,
+          rank: null
+        }))
+      };
+    });
+    saveRooms(updatedRooms);
+    rooms = updatedRooms;
+    currentRoom = updatedRooms.find((room) => room.id === currentRoom?.id) ?? currentRoom;
+    beginDiagnosis();
   };
 
   const getNumericValue = (id: string) => {
@@ -718,13 +740,19 @@
           };
         });
 
-        return { ...room, participants: updatedParticipants };
+        const allParticipantsCompleted = updatedParticipants.length > 0
+          && updatedParticipants.every((participant) => participant.score !== null);
+        return {
+          ...room,
+          status: allParticipantsCompleted ? 'completed' as const : 'diagnosis' as const,
+          participants: updatedParticipants
+        };
       });
 
       saveRooms(updatedRooms);
       rooms = updatedRooms;
       currentRoom = updatedRooms.find((room) => room.id === currentRoom?.id) ?? currentRoom;
-      navigate('results');
+      navigate(currentRoom.status === 'completed' ? 'results' : 'waiting-results');
     } catch (error) {
       diagnosisError = '診断処理に失敗しました。通信環境を確認して再試行してください。';
       navigate('diagnosis');
@@ -768,7 +796,14 @@
     rooms = latestRooms;
     if (currentRoom) {
       const updated = latestRooms.find((r) => r.id === currentRoom!.id);
-      if (updated) currentRoom = updated;
+      if (updated) {
+        currentRoom = updated;
+        if (updated.status === 'diagnosis' && screen === 'waiting') {
+          beginDiagnosis();
+        } else if (updated.status === 'completed' && screen === 'waiting-results') {
+          navigate('results');
+        }
+      }
     }
   };
 
@@ -1038,6 +1073,22 @@
       {#if diagnosisError}
         <p class="error-text">{diagnosisError}</p>
       {/if}
+    </div>
+  </div>
+{:else if screen === 'waiting-results'}
+  <div class="screen">
+    <div class="phone-shell center-shell">
+      <div class="spinner"></div>
+      <h2>全員の回答を待っています</h2>
+      <p class="hint-text">メンバー全員が診断を終えると結果が表示されます。</p>
+      <div class="participant-list">
+        {#each currentRoom?.participants ?? [] as participant}
+          <div class="participant-item">
+            <span class="participant-name">{participant.name}</span>
+            <span class="hint-text">{participant.score !== null ? '回答済み' : '回答中'}</span>
+          </div>
+        {/each}
+      </div>
     </div>
   </div>
 {:else if screen === 'results'}
