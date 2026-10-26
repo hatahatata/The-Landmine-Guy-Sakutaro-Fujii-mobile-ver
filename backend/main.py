@@ -1,9 +1,9 @@
 import base64
-from typing import Any
+from typing import Any, Dict, List, Optional
 
 import pandas as pd
 import requests
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
@@ -14,11 +14,130 @@ app = FastAPI(title="Student Grade Diagnosis API")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_origins=["*"],  # 全デバイスからアクセス可能にする（開発用）
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# ===== ルーム管理（サーバーメモリ） =====
+rooms_store: Dict[str, dict] = {}
+
+
+# ----- Pydantic モデル -----
+
+class ParticipantModel(BaseModel):
+    id: str
+    name: str
+    isAdmin: bool
+    score: Optional[int] = None
+    riskScore: Optional[float] = None
+    prob3: Optional[float] = None
+    rank: Optional[int] = None
+
+
+class RoomModel(BaseModel):
+    id: str
+    name: str
+    code: str
+    ownerId: str
+    createdAt: int
+    participants: List[ParticipantModel]
+    status: str = "waiting"
+
+
+class JoinRoomRequest(BaseModel):
+    id: str
+    name: str
+
+
+class LeaveRoomRequest(BaseModel):
+    user_id: str
+
+
+class UpdateScoreRequest(BaseModel):
+    user_id: str
+    score: int
+    riskScore: float
+    prob3: float
+
+
+# ----- ルーム管理エンドポイント -----
+
+@app.get("/health")
+def health() -> dict[str, str]:
+    return {"status": "ok"}
+
+
+@app.post("/rooms", response_model=RoomModel)
+def create_room(room: RoomModel) -> RoomModel:
+    rooms_store[room.id] = room.model_dump()
+    return room
+
+
+@app.get("/rooms", response_model=List[RoomModel])
+def get_rooms() -> List[dict]:
+    return list(rooms_store.values())
+
+
+@app.get("/rooms/by-code/{code}", response_model=RoomModel)
+def get_room_by_code(code: str) -> dict:
+    for room in rooms_store.values():
+        if room["code"] == code.upper():
+            return room
+    raise HTTPException(status_code=404, detail="Room not found")
+
+
+@app.get("/rooms/{room_id}", response_model=RoomModel)
+def get_room(room_id: str) -> dict:
+    if room_id not in rooms_store:
+        raise HTTPException(status_code=404, detail="Room not found")
+    return rooms_store[room_id]
+
+
+@app.post("/rooms/{room_id}/join", response_model=RoomModel)
+def join_room(room_id: str, req: JoinRoomRequest) -> dict:
+    if room_id not in rooms_store:
+        raise HTTPException(status_code=404, detail="Room not found")
+    room = rooms_store[room_id]
+    already = any(p["id"] == req.id for p in room["participants"])
+    if not already:
+        room["participants"].append({
+            "id": req.id,
+            "name": req.name,
+            "isAdmin": False,
+            "score": None,
+            "riskScore": None,
+            "prob3": None,
+            "rank": None,
+        })
+    return room
+
+
+@app.post("/rooms/{room_id}/leave", response_model=RoomModel)
+def leave_room(room_id: str, req: LeaveRoomRequest) -> dict:
+    if room_id not in rooms_store:
+        raise HTTPException(status_code=404, detail="Room not found")
+    room = rooms_store[room_id]
+    room["participants"] = [p for p in room["participants"] if p["id"] != req.user_id]
+    return room
+
+
+@app.put("/rooms/{room_id}/score", response_model=RoomModel)
+def update_score(room_id: str, req: UpdateScoreRequest) -> dict:
+    if room_id not in rooms_store:
+        raise HTTPException(status_code=404, detail="Room not found")
+    room = rooms_store[room_id]
+    for p in room["participants"]:
+        if p["id"] == req.user_id:
+            p["score"] = req.score
+            p["riskScore"] = req.riskScore
+            p["prob3"] = req.prob3
+            break
+    return room
+
+
+# ----- AI 診断エンドポイント -----
 
 class StudentInput(BaseModel):
     StudyHours: float
@@ -32,19 +151,18 @@ class StudentInput(BaseModel):
     AssignmentCompletion: float
     EduTech: float
 
+
 class ProbabilityResult(BaseModel):
     rank0: float
     rank1: float
     rank2: float
     rank3: float
 
+
 class DiagnosisResult(BaseModel):
     final_grade: int
     probabilities: ProbabilityResult
 
-@app.get("/health")
-def health() -> dict[str, str]:
-    return {"status": "ok"}
 
 @app.post("/predict", response_model=DiagnosisResult)
 def predict(input: StudentInput) -> DiagnosisResult:
