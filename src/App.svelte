@@ -75,7 +75,8 @@
   const STORAGE_KEYS = {
     users: 'student_group_demo_users',
     session: 'student_group_demo_session',
-    rooms: 'student_group_demo_rooms'
+    rooms: 'student_group_demo_rooms',
+    currentRoomId: 'student_group_demo_current_room_id'
   } as const;
 
     const gradeDescriptions: Record<GradeKey, { judge: string; title: string; description: string }> = {
@@ -494,6 +495,7 @@
     saveRooms(updatedRooms);
     rooms = updatedRooms;
     currentRoom = newRoom;
+    localStorage.setItem(STORAGE_KEYS.currentRoomId, newRoom.id);
     roomName = '';
     navigate('waiting');
   };
@@ -530,12 +532,14 @@
     }
 
     currentRoom = room;
+    localStorage.setItem(STORAGE_KEYS.currentRoomId, room.id);
     roomCodeInput = '';
     navigate('waiting');
   };
 
   const enterRoom = (room: Room) => {
     currentRoom = room;
+    localStorage.setItem(STORAGE_KEYS.currentRoomId, room.id);
     navigate('waiting');
   };
 
@@ -553,6 +557,7 @@
     saveRooms(updated);
     rooms = updated;
     currentRoom = null;
+    localStorage.removeItem(STORAGE_KEYS.currentRoomId);
     navigate('rooms');
   };
 
@@ -738,6 +743,7 @@
 
     const goHome = () => {
     currentRoom = null;
+    localStorage.removeItem(STORAGE_KEYS.currentRoomId);
     navigate('rooms');
   };
 
@@ -756,17 +762,52 @@
     }, 250);
   };
 
+  // 他タブ/ウィンドウのlocalStorage変更をリアルタイム同期
+  const syncRoomsFromStorage = () => {
+    const latestRooms = getRooms();
+    rooms = latestRooms;
+    if (currentRoom) {
+      const updated = latestRooms.find((r) => r.id === currentRoom!.id);
+      if (updated) currentRoom = updated;
+    }
+  };
+
   onMount(() => {
     isHydrated = true;
     const sessionUser = getCurrentUser();
     if (sessionUser) {
       currentUser = sessionUser;
       rooms = getRooms();
-      navigate('rooms');
+
+      // 前回いた部屋を復元
+      const savedRoomId = localStorage.getItem(STORAGE_KEYS.currentRoomId);
+      if (savedRoomId) {
+        const savedRoom = rooms.find((r) => r.id === savedRoomId);
+        if (savedRoom) {
+          currentRoom = savedRoom;
+          navigate('waiting');
+        } else {
+          localStorage.removeItem(STORAGE_KEYS.currentRoomId);
+          navigate('rooms');
+        }
+      } else {
+        navigate('rooms');
+      }
     } else {
       // セッションなし → Google ログイン画面へ
       navigate('auth');
     }
+
+    // 他タブの変更をstorage イベントで受信
+    window.addEventListener('storage', syncRoomsFromStorage);
+
+    // 同一タブでも確実に同期するためポーリング（2秒ごと）
+    const pollInterval = setInterval(syncRoomsFromStorage, 2000);
+
+    return () => {
+      window.removeEventListener('storage', syncRoomsFromStorage);
+      clearInterval(pollInterval);
+    };
   });
 
   $: progressRate = ((diagnosisIndex + 1) / diagnosisQuestions.length) * 100;
@@ -914,7 +955,11 @@
       </div>
 
       <div class="bottom-bar">
-        <button class="primary-button full" on:click={startDiagnosis} type="button">診断を開始</button>
+        {#if isAdmin()}
+          <button class="primary-button full" on:click={startDiagnosis} type="button">診断を開始</button>
+        {:else}
+          <p class="waiting-hint">ホストが診断を開始するまでお待ちください…</p>
+        {/if}
       </div>
     </div>
   </div>
@@ -1688,6 +1733,14 @@
 
   .copy-button:active {
     background: #e2e8f0;
+  }
+
+  .waiting-hint {
+    text-align: center;
+    font-size: 0.82rem;
+    color: #64748b;
+    margin: 0;
+    padding: 10px 0;
   }
 </style>
 
