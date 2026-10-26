@@ -876,7 +876,24 @@
         <div class="card info-card">
           <div class="info-row">
             <span>招待コード</span>
-            <strong class="code-badge">{currentRoom?.code ?? ''}</strong>
+            <div class="code-copy-group">
+              <strong class="code-badge">{currentRoom?.code ?? ''}</strong>
+              <button
+                class="copy-button"
+                type="button"
+                title="コードをコピー"
+                on:click={() => {
+                  const code = currentRoom?.code ?? '';
+                  navigator.clipboard.writeText(code).then(() => {
+                    setToast('招待コードをコピーしました！');
+                  }).catch(() => {
+                    setToast('コピーに失敗しました');
+                  });
+                }}
+              >
+                📋
+              </button>
+            </div>
           </div>
           <p class="hint-text">このコードを他のメンバーに共有してください。</p>
         </div>
@@ -1644,6 +1661,33 @@
     padding: 8px 12px;
     font-size: 0.78rem;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  }
+
+  .code-copy-group {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .copy-button {
+    background: none;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    padding: 2px 8px;
+    font-size: 1rem;
+    cursor: pointer;
+    line-height: 1.4;
+    color: #475569;
+    transition: background 0.15s, border-color 0.15s;
+  }
+
+  .copy-button:hover {
+    background: #f1f5f9;
+    border-color: #94a3b8;
+  }
+
+  .copy-button:active {
+    background: #e2e8f0;
   }
 </style>
 
