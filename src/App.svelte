@@ -725,57 +725,6 @@
     }
   };
 
-  const SONY_API_KEY = 'df4d195d-dfa9-4e10-b515-77e15096d492';
-  const SONY_API_URL = 'https://user-api.predictionone.sony.biz/v1/groups/qejw062trt0qwwav/classifiers/quipaioomqira6hd/inference';
-
-  const predictDirectlyFromSony = async (input: StudentInput): Promise<{ final_grade: number; probabilities: Probability }> => {
-    const csvContent = [
-      'StudyHours,Attendance,Resources,Motivation,Internet,Gender,Age,Discussions,AssignmentCompletion,EduTech',
-      `${input.StudyHours},${input.Attendance},${input.Resources},${input.Motivation},${input.Internet},${input.Gender},${input.Age},${input.Discussions},${input.AssignmentCompletion},${input.EduTech}`
-    ].join('\n') + '\n';
-
-    const encodedData = btoa(unescape(encodeURIComponent(csvContent)));
-    const response = await fetch(SONY_API_URL, {
-      method: 'POST',
-      headers: {
-        'x-api-key': SONY_API_KEY,
-        'content-type': 'application/json; charset=utf-8'
-      },
-      body: JSON.stringify({
-        inputs: [
-          { name: 'pr', type: 'csv', data: encodedData },
-          { name: 'ar', type: 'boolean', data: false },
-          { name: 'ad', type: 'boolean', data: true },
-          { name: 'nc', type: 'boolean', data: false }
-        ]
-      })
-    });
-
-    if (!response.ok) {
-      throw new Error(`Sony API HTTP ${response.status}`);
-    }
-
-    const json = await response.json();
-    const output = (json.outputs || []).find((item: any) => item.name === 'prediction_valid.csv');
-    if (!output) {
-      throw new Error('prediction_valid.csv not found');
-    }
-
-    const decodedCsv = decodeURIComponent(escape(atob(output.data)));
-    const lines = decodedCsv.trim().split('\n');
-    const cols = lines[1].split(',');
-
-    return {
-      final_grade: parseInt(cols[1], 10),
-      probabilities: {
-        rank0: parseFloat(cols[2]) * 100,
-        rank1: parseFloat(cols[3]) * 100,
-        rank2: parseFloat(cols[4]) * 100,
-        rank3: parseFloat(cols[5]) * 100
-      }
-    };
-  };
-
   const submitDiagnosis = async () => {
     if (!currentUser || !currentRoom) return;
     diagnosisLoading = true;
@@ -787,7 +736,7 @@
       const studentInput = buildStudentInput();
 
       try {
-        const response = await fetch('http://127.0.0.1:8000/predict', {
+        const response = await fetch(`${API_BASE_URL}/predict`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(studentInput)
@@ -796,11 +745,11 @@
         if (response.ok) {
           payload = await response.json();
         } else {
-          payload = await predictDirectlyFromSony(studentInput);
+          throw new Error(`Prediction API HTTP ${response.status}`);
         }
       } catch {
         // バックエンドが未起動の場合は直接Sony Prediction One APIへ
-        payload = await predictDirectlyFromSony(studentInput);
+        throw new Error('Prediction API request failed');
       }
 
       const rankKey = Number(payload.final_grade) as GradeKey;

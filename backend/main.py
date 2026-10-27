@@ -1,11 +1,12 @@
 import base64
 import json
+import os
 import re
 import secrets
 import sqlite3
 import time
 from pathlib import Path
-from threading import Lock
+from threading import RLock
 from typing import Any, Dict, List, Optional
 
 import pandas as pd
@@ -14,22 +15,28 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-API_KEY = "df4d195d-dfa9-4e10-b515-77e15096d492"
-API_URL = "https://user-api.predictionone.sony.biz/v1/groups/qejw062trt0qwwav/classifiers/quipaioomqira6hd/inference"
+API_KEY = os.environ.get("SONY_API_KEY", "")
+API_URL = os.environ.get(
+    "SONY_API_URL",
+    "https://user-api.predictionone.sony.biz/v1/groups/qejw062trt0qwwav/classifiers/quipaioomqira6hd/inference",
+)
 
 app = FastAPI(title="Student Grade Diagnosis API")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # 全デバイスからアクセス可能にする（開発用）
+    allow_origins=[origin.strip() for origin in os.environ.get(
+        "CORS_ORIGINS", "http://127.0.0.1:5173,http://localhost:5173"
+    ).split(",") if origin.strip()],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 # ===== ルーム管理（サーバーメモリ） =====
-ROOMS_DB = Path(__file__).with_name("rooms.db")
-rooms_lock = Lock()
+ROOMS_DB = Path(os.environ.get("ROOMS_DB_PATH", str(Path(__file__).with_name("rooms.db"))))
+ROOMS_DB.parent.mkdir(parents=True, exist_ok=True)
+rooms_lock = RLock()
 CODE_PATTERN = re.compile(r"^[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{6}$")
 
 
@@ -179,13 +186,14 @@ def get_room(room_id: str) -> dict:
 
 @app.post("/rooms/{room_id}/join", response_model=RoomModel)
 def join_room(room_id: str, req: JoinRoomRequest) -> dict:
-    room = find_room(room_id)
-    if room.status != "waiting":
-        raise HTTPException(status_code=409, detail="Room is no longer accepting participants")
-    already = any(p.id == req.id for p in room.participants)
-    if not already:
-        room.participants.append(ParticipantModel(id=req.id, name=req.name, isAdmin=False))
-    return save_room(room)
+    with rooms_lock:
+        room = find_room(room_id)
+        if room.status != "waiting":
+            raise HTTPException(status_code=409, detail="Room is no longer accepting participants")
+        already = any(p.id == req.id for p in room.participants)
+        if not already:
+            room.participants.append(ParticipantModel(id=req.id, name=req.name, isAdmin=False))
+        return save_room(room)
 
 
 @app.post("/rooms/{room_id}/leave", response_model=RoomModel)
@@ -254,6 +262,8 @@ class DiagnosisResult(BaseModel):
 
 @app.post("/predict", response_model=DiagnosisResult)
 def predict(input: StudentInput) -> DiagnosisResult:
+    if not API_KEY:
+        raise HTTPException(status_code=503, detail="SONY_API_KEY is not configured")
     input_data = {
         "StudyHours": [input.StudyHours],
         "Attendance": [input.Attendance],
