@@ -20,20 +20,7 @@ services:
         sync: false
       - key: SONY_API_URL
         value: https://user-api.predictionone.sony.biz/v1/groups/qejw062trt0qwwav/classifiers/quipaioomqira6hd/inference
-      # Set this to the final Render static-site URL after the first frontend deploy.
+      # Set this to the actual Cloudflare Pages origin after checking it.
       - key: CORS_ORIGINS
         sync: false
 
-  # Svelte/Vite static frontend.
-  - type: web
-    name: landmine-guy-web
-    runtime: static
-    buildCommand: npm ci && npm run build
-    staticPublishPath: ./dist
-    autoDeploy: true
-    envVars:
-      # Set this to https://landmine-guy-api.onrender.com after the API deploys.
-      - key: VITE_API_BASE_URL
-        sync: false
-      - key: VITE_GOOGLE_CLIENT_ID
-        sync: false
