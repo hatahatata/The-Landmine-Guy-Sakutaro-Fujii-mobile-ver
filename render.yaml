@@ -1,21 +1,17 @@
 services:
-  # FastAPI. The persistent disk is required because the application currently uses SQLite.
+  # FastAPI backend. SQLite is temporary on the free plan.
   - type: web
     name: landmine-guy-api
     runtime: python
     region: singapore
-    plan: starter
+    plan: free
     buildCommand: pip install -r requirements.txt
     startCommand: uvicorn backend.main:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /health
     autoDeploy: true
-    disk:
-      name: landmine-guy-rooms
-      mountPath: /var/data
-      sizeGB: 1
     envVars:
       - key: ROOMS_DB_PATH
-        value: /var/data/rooms.db
+        value: /tmp/rooms.db
       - key: SONY_API_KEY
         sync: false
       - key: SONY_API_URL
