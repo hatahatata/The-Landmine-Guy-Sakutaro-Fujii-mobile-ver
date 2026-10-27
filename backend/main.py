@@ -1,4 +1,11 @@
 import base64
+import json
+import re
+import secrets
+import sqlite3
+import time
+from pathlib import Path
+from threading import Lock
 from typing import Any, Dict, List, Optional
 
 import pandas as pd
@@ -21,7 +28,27 @@ app.add_middleware(
 )
 
 # ===== ルーム管理（サーバーメモリ） =====
-rooms_store: Dict[str, dict] = {}
+ROOMS_DB = Path(__file__).with_name("rooms.db")
+rooms_lock = Lock()
+CODE_PATTERN = re.compile(r"^[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{6}$")
+
+
+def db_connection() -> sqlite3.Connection:
+    connection = sqlite3.connect(ROOMS_DB, timeout=10)
+    connection.row_factory = sqlite3.Row
+    return connection
+
+
+def init_rooms_db() -> None:
+    with db_connection() as connection:
+        connection.execute("""CREATE TABLE IF NOT EXISTS rooms (
+            id TEXT PRIMARY KEY, code TEXT NOT NULL UNIQUE, name TEXT NOT NULL,
+            owner_id TEXT NOT NULL, created_at INTEGER NOT NULL, status TEXT NOT NULL,
+            participants_json TEXT NOT NULL
+        )""")
+
+
+init_rooms_db()
 
 
 # ----- Pydantic モデル -----
@@ -62,6 +89,12 @@ class UpdateScoreRequest(BaseModel):
     prob3: float
 
 
+class CreateRoomRequest(BaseModel):
+    name: str
+    ownerId: str
+    ownerName: str
+
+
 # ----- ルーム管理エンドポイント -----
 
 @app.get("/health")
@@ -70,71 +103,126 @@ def health() -> dict[str, str]:
 
 
 @app.post("/rooms", response_model=RoomModel)
-def create_room(room: RoomModel) -> RoomModel:
-    rooms_store[room.id] = room.model_dump()
+def create_room(req: CreateRoomRequest) -> RoomModel:
+    name = req.name.strip()
+    if not name:
+        raise HTTPException(status_code=422, detail="Room name is required")
+    chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+    with rooms_lock, db_connection() as connection:
+        for _ in range(10):
+            code = "".join(secrets.choice(chars) for _ in range(6))
+            if connection.execute("SELECT 1 FROM rooms WHERE code = ?", (code,)).fetchone() is None:
+                break
+        else:
+            raise HTTPException(status_code=503, detail="Could not allocate an invitation code")
+        room = RoomModel(
+            id=secrets.token_hex(16), name=name, code=code, ownerId=req.ownerId,
+            createdAt=int(time.time() * 1000),
+            participants=[ParticipantModel(id=req.ownerId, name=req.ownerName, isAdmin=True)],
+            status="waiting",
+        )
+        connection.execute(
+            "INSERT INTO rooms VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (room.id, room.code, room.name, room.ownerId, room.createdAt, room.status,
+             json.dumps([participant.model_dump() for participant in room.participants])),
+        )
+    return room
+
+
+def row_to_room(row: sqlite3.Row) -> RoomModel:
+    return RoomModel(
+        id=row["id"], name=row["name"], code=row["code"], ownerId=row["owner_id"],
+        createdAt=row["created_at"], status=row["status"],
+        participants=json.loads(row["participants_json"]),
+    )
+
+
+def find_room(room_id: str) -> RoomModel:
+    with db_connection() as connection:
+        row = connection.execute("SELECT * FROM rooms WHERE id = ?", (room_id,)).fetchone()
+    if row is None:
+        raise HTTPException(status_code=404, detail="Room not found")
+    return row_to_room(row)
+
+
+def save_room(room: RoomModel) -> RoomModel:
+    with rooms_lock, db_connection() as connection:
+        connection.execute(
+            "UPDATE rooms SET status = ?, participants_json = ? WHERE id = ?",
+            (room.status, json.dumps([participant.model_dump() for participant in room.participants]), room.id),
+        )
     return room
 
 
 @app.get("/rooms", response_model=List[RoomModel])
 def get_rooms() -> List[dict]:
-    return list(rooms_store.values())
+    with db_connection() as connection:
+        return [row_to_room(row) for row in connection.execute("SELECT * FROM rooms ORDER BY created_at DESC")]
 
 
 @app.get("/rooms/by-code/{code}", response_model=RoomModel)
 def get_room_by_code(code: str) -> dict:
-    for room in rooms_store.values():
-        if room["code"] == code.upper():
-            return room
-    raise HTTPException(status_code=404, detail="Room not found")
+    normalized = code.strip().upper()
+    if not CODE_PATTERN.fullmatch(normalized):
+        raise HTTPException(status_code=422, detail="Invalid invitation code format")
+    with db_connection() as connection:
+        row = connection.execute("SELECT * FROM rooms WHERE code = ?", (normalized,)).fetchone()
+    if row is None:
+        raise HTTPException(status_code=404, detail="Room not found")
+    return row_to_room(row)
 
 
 @app.get("/rooms/{room_id}", response_model=RoomModel)
 def get_room(room_id: str) -> dict:
-    if room_id not in rooms_store:
-        raise HTTPException(status_code=404, detail="Room not found")
-    return rooms_store[room_id]
+    return find_room(room_id)
 
 
 @app.post("/rooms/{room_id}/join", response_model=RoomModel)
 def join_room(room_id: str, req: JoinRoomRequest) -> dict:
-    if room_id not in rooms_store:
-        raise HTTPException(status_code=404, detail="Room not found")
-    room = rooms_store[room_id]
-    already = any(p["id"] == req.id for p in room["participants"])
+    room = find_room(room_id)
+    if room.status != "waiting":
+        raise HTTPException(status_code=409, detail="Room is no longer accepting participants")
+    already = any(p.id == req.id for p in room.participants)
     if not already:
-        room["participants"].append({
-            "id": req.id,
-            "name": req.name,
-            "isAdmin": False,
-            "score": None,
-            "riskScore": None,
-            "prob3": None,
-            "rank": None,
-        })
-    return room
+        room.participants.append(ParticipantModel(id=req.id, name=req.name, isAdmin=False))
+    return save_room(room)
 
 
 @app.post("/rooms/{room_id}/leave", response_model=RoomModel)
 def leave_room(room_id: str, req: LeaveRoomRequest) -> dict:
-    if room_id not in rooms_store:
-        raise HTTPException(status_code=404, detail="Room not found")
-    room = rooms_store[room_id]
-    room["participants"] = [p for p in room["participants"] if p["id"] != req.user_id]
-    return room
+    room = find_room(room_id)
+    room.participants = [p for p in room.participants if p.id != req.user_id]
+    return save_room(room)
+
+
+@app.post("/rooms/{room_id}/start", response_model=RoomModel)
+def start_room(room_id: str) -> RoomModel:
+    room = find_room(room_id)
+    if room.status != "waiting":
+        raise HTTPException(status_code=409, detail="Room has already started")
+    room.status = "diagnosis"
+    for participant in room.participants:
+        participant.score = None
+        participant.riskScore = None
+        participant.prob3 = None
+        participant.rank = None
+    return save_room(room)
 
 
 @app.put("/rooms/{room_id}/score", response_model=RoomModel)
 def update_score(room_id: str, req: UpdateScoreRequest) -> dict:
-    if room_id not in rooms_store:
-        raise HTTPException(status_code=404, detail="Room not found")
-    room = rooms_store[room_id]
-    for p in room["participants"]:
-        if p["id"] == req.user_id:
-            p["score"] = req.score
-            p["riskScore"] = req.riskScore
-            p["prob3"] = req.prob3
+    room = find_room(room_id)
+    for p in room.participants:
+        if p.id == req.user_id:
+            p.score = req.score
+            p.riskScore = req.riskScore
+            p.prob3 = req.prob3
             break
-    return room
+    else:
+        raise HTTPException(status_code=403, detail="User is not a room participant")
+    if room.participants and all(p.score is not None for p in room.participants):
+        room.status = "completed"
+    return save_room(room)
 
 
 # ----- AI 診断エンドポイント -----

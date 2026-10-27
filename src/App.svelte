@@ -78,6 +78,7 @@
     rooms: 'student_group_demo_rooms',
     currentRoomId: 'student_group_demo_current_room_id'
   } as const;
+  const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000').replace(/\/$/, '');
 
     const gradeDescriptions: Record<GradeKey, { judge: string; title: string; description: string }> = {
     0: {
@@ -135,6 +136,23 @@
   let diagnosisResult: GradeResult | null = null;
   let diagnosisError = '';
   let toast = '';
+  let roomBusy = false;
+
+  const apiRequest = async <T>(path: string, init?: RequestInit): Promise<T> => {
+    const response = await fetch(`${API_BASE_URL}${path}`, {
+      ...init,
+      headers: { 'Content-Type': 'application/json', ...(init?.headers ?? {}) }
+    });
+    if (!response.ok) {
+      let detail = `サーバーエラー (${response.status})`;
+      try {
+        const body = await response.json();
+        detail = body.detail || detail;
+      } catch { /* keep the status message */ }
+      throw new Error(detail);
+    }
+    return response.json() as Promise<T>;
+  };
 
   const start = () => {
     if (toast) {
@@ -471,7 +489,7 @@
     navigate('rooms');
   };
 
-  const createRoom = () => {
+  const createRoomLocal = () => {
     roomError = '';
 
     if (!roomName.trim()) {
@@ -500,7 +518,7 @@
     navigate('waiting');
   };
 
-  const joinRoom = () => {
+  const joinRoomLocal = () => {
     roomError = '';
     const code = roomCodeInput.trim().toUpperCase();
     if (!code) {
@@ -537,13 +555,84 @@
     navigate('waiting');
   };
 
+  const createRoom = async () => {
+    roomError = '';
+    if (!roomName.trim()) { roomError = 'ルーム名を入力してください。'; return; }
+    if (!currentUser || roomBusy) return;
+    roomBusy = true;
+    try {
+      const room = await apiRequest<Room>('/rooms', { method: 'POST', body: JSON.stringify({
+        name: roomName.trim(), ownerId: currentUser.id, ownerName: currentUser.nickname || currentUser.name
+      }) });
+      rooms = [room, ...rooms.filter((entry) => entry.id !== room.id)];
+      currentRoom = room;
+      localStorage.setItem(STORAGE_KEYS.currentRoomId, room.id);
+      roomName = '';
+      navigate('waiting');
+    } catch (error) { roomError = error instanceof Error ? error.message : 'ルームの作成に失敗しました。'; }
+    finally { roomBusy = false; }
+  };
+
+  const joinRoom = async () => {
+    roomError = '';
+    const code = roomCodeInput.trim().toUpperCase();
+    if (!code) { roomError = '招待コードを入力してください。'; return; }
+    if (!/^[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{6}$/.test(code)) {
+      roomError = '招待コードは英数字6文字で入力してください。'; return;
+    }
+    if (!currentUser || roomBusy) return;
+    roomBusy = true;
+    try {
+      const found = await apiRequest<Room>(`/rooms/by-code/${encodeURIComponent(code)}`);
+      const room = await apiRequest<Room>(`/rooms/${found.id}/join`, { method: 'POST', body: JSON.stringify({
+        id: currentUser.id, name: currentUser.nickname || currentUser.name
+      }) });
+      rooms = rooms.some((entry) => entry.id === room.id)
+        ? rooms.map((entry) => entry.id === room.id ? room : entry) : [room, ...rooms];
+      currentRoom = room;
+      localStorage.setItem(STORAGE_KEYS.currentRoomId, room.id);
+      roomCodeInput = '';
+      navigate('waiting');
+    } catch (error) {
+      roomError = error instanceof Error && error.message === 'Room not found'
+        ? 'その招待コードのルームは存在しません。' : error instanceof Error ? error.message : 'ルームへの参加に失敗しました。';
+    } finally { roomBusy = false; }
+  };
+
+  const leaveRoom = async () => {
+    if (!currentRoom || !currentUser || roomBusy) return;
+    roomBusy = true;
+    try {
+      const room = await apiRequest<Room>(`/rooms/${currentRoom.id}/leave`, {
+        method: 'POST', body: JSON.stringify({ user_id: currentUser.id })
+      });
+      rooms = rooms.map((entry) => entry.id === room.id ? room : entry);
+      currentRoom = null;
+      localStorage.removeItem(STORAGE_KEYS.currentRoomId);
+      navigate('rooms');
+    } catch (error) { roomError = error instanceof Error ? error.message : '退出に失敗しました。'; }
+    finally { roomBusy = false; }
+  };
+
+  const startDiagnosis = async () => {
+    if (!currentRoom || roomBusy) return;
+    roomBusy = true;
+    try {
+      const room = await apiRequest<Room>(`/rooms/${currentRoom.id}/start`, { method: 'POST' });
+      currentRoom = room;
+      rooms = rooms.map((entry) => entry.id === room.id ? room : entry);
+      beginDiagnosis();
+    } catch (error) { roomError = error instanceof Error ? error.message : '診断の開始に失敗しました。'; }
+    finally { roomBusy = false; }
+  };
+
   const enterRoom = (room: Room) => {
     currentRoom = room;
     localStorage.setItem(STORAGE_KEYS.currentRoomId, room.id);
     navigate('waiting');
   };
 
-  const leaveRoom = () => {
+  const leaveRoomLocal = () => {
     const room = currentRoom;
     const user = currentUser;
     if (!room || !user) return;
@@ -571,7 +660,7 @@
     navigate('diagnosis');
   };
 
-  const startDiagnosis = () => {
+  const startDiagnosisLocal = () => {
     if (!currentRoom) return;
     const updatedRooms = getRooms().map((room) => {
       if (room.id !== currentRoom?.id) return room;
@@ -725,6 +814,20 @@
         probabilities: payload.probabilities
       };
 
+      const serverRoom = await apiRequest<Room>(`/rooms/${currentRoom.id}/score`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          user_id: currentUser.id,
+          score: Number(payload.final_grade),
+          riskScore,
+          prob3: payload.probabilities?.rank3 ?? 0
+        })
+      });
+      currentRoom = serverRoom;
+      rooms = rooms.map((room) => room.id === serverRoom.id ? serverRoom : room);
+      navigate(serverRoom.status === 'completed' ? 'results' : 'waiting-results');
+      return;
+
       const updatedRooms = getRooms().map((room) => {
         if (!currentRoom || room.id !== currentRoom.id) return room;
 
@@ -807,8 +910,26 @@
     }
   };
 
+  const syncRoomsFromServer = async () => {
+    try {
+      const latestRooms = await apiRequest<Room[]>('/rooms');
+      rooms = latestRooms;
+      if (currentRoom) {
+        const updated = latestRooms.find((room) => room.id === currentRoom?.id);
+        if (updated) {
+          currentRoom = updated;
+          if (updated.status === 'diagnosis' && screen === 'waiting') beginDiagnosis();
+          if (updated.status === 'completed' && screen === 'waiting-results') navigate('results');
+        }
+      }
+    } catch (error) {
+      console.warn('Room synchronization failed', error);
+    }
+  };
+
   onMount(() => {
     isHydrated = true;
+    void syncRoomsFromServer();
     const sessionUser = getCurrentUser();
     if (sessionUser) {
       currentUser = sessionUser;
@@ -837,7 +958,7 @@
     window.addEventListener('storage', syncRoomsFromStorage);
 
     // 同一タブでも確実に同期するためポーリング（2秒ごと）
-    const pollInterval = setInterval(syncRoomsFromStorage, 2000);
+    const pollInterval = setInterval(() => void syncRoomsFromServer(), 2000);
 
     return () => {
       window.removeEventListener('storage', syncRoomsFromStorage);
