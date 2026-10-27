@@ -10,6 +10,9 @@ services:
     healthCheckPath: /health
     autoDeploy: true
     envVars:
+      # Render requires a fully qualified version for PYTHON_VERSION.
+      - key: PYTHON_VERSION
+        value: 3.12.11
       - key: ROOMS_DB_PATH
         value: /tmp/rooms.db
       - key: SONY_API_KEY
